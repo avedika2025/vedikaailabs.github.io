@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vedika AI Labs — AI Agents for Clinics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--teal:#0D9488;--teal-lt:#14B8A6;--navy:#0F1F3D;--navy-mid:#162240;--coral:#E8736A;--amber:#F59E0B;--green:#22C55E;--purple:#8B5CF6;--slate:#94A3B8;--white:#F8FAFC;--bg:#080E1C}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--white);overflow-x:hidden;cursor:none}
+#cursor{position:fixed;top:0;left:0;z-index:9999;width:12px;height:12px;background:var(--teal);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);transition:transform .1s;mix-blend-mode:screen}
+#cursor-ring{position:fixed;top:0;left:0;z-index:9998;width:36px;height:36px;border:1.5px solid var(--teal);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);transition:transform .15s ease-out;opacity:.5}
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.35}
+.page{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:1fr 420px;grid-template-rows:100vh}
+.stage{display:flex;flex-direction:column;justify-content:center;padding:80px 72px 80px 80px;position:relative;overflow:hidden}
+.logo{position:absolute;top:48px;left:80px;display:flex;align-items:center;gap:12px}
+.logo-mark{width:38px;height:38px;background:var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:17px;color:white;flex-shrink:0}
+.logo-name{font-size:15px;font-weight:600;color:var(--white);letter-spacing:.02em}
+.logo-domain{font-size:11px;color:var(--teal);margin-top:1px}
+.scene-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal);letter-spacing:.12em;text-transform:uppercase;margin-bottom:26px;opacity:0;transform:translateY(10px);transition:opacity .5s,transform .5s}
+.scene-label.visible{opacity:1;transform:translateY(0)}
+.headline{font-family:'DM Serif Display',serif;font-size:clamp(34px,4.2vw,52px);line-height:1.1;color:var(--white);margin-bottom:22px;opacity:0;transform:translateY(20px);transition:opacity .6s .1s,transform .6s .1s}
+.headline.visible{opacity:1;transform:translateY(0)}
+.headline em{font-style:italic;color:var(--teal-lt)}
+.headline .coral{color:var(--coral)}
+.subtext{font-size:16px;line-height:1.7;color:var(--slate);max-width:520px;margin-bottom:34px;opacity:0;transform:translateY(16px);transition:opacity .6s .2s,transform .6s .2s}
+.subtext.visible{opacity:1;transform:translateY(0)}
+.stats{display:flex;gap:32px;margin-bottom:40px;opacity:0;transform:translateY(12px);transition:opacity .6s .3s,transform .6s .3s}
+.stats.visible{opacity:1;transform:translateY(0)}
+.stat-val{font-family:'DM Serif Display',serif;font-size:34px;color:var(--teal-lt);line-height:1}
+.stat-lbl{font-size:10.5px;color:var(--slate);text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
+.agents-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:32px;opacity:0;transform:translateY(12px);transition:opacity .6s .25s,transform .6s .25s}
+.agents-grid.visible{opacity:1;transform:translateY(0)}
+.agent-card{background:var(--navy-mid);border:1px solid #1E3461;border-radius:10px;padding:12px 14px;position:relative;overflow:hidden}
+.agent-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--accent-color,var(--teal))}
+.agent-num{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--accent-color,var(--teal));margin-bottom:3px}
+.agent-name{font-size:12px;font-weight:600;color:var(--white);margin-bottom:2px}
+.agent-desc{font-size:10.5px;color:var(--slate);line-height:1.5}
+.infra-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;opacity:0;transform:translateY(12px);transition:opacity .6s .25s,transform .6s .25s}
+.infra-grid.visible{opacity:1;transform:translateY(0)}
+.infra-item{background:var(--navy-mid);border:1px solid #1E3461;border-radius:8px;padding:12px 13px;text-align:center}
+.infra-icon{font-size:18px;margin-bottom:5px}
+.infra-label{font-size:11px;font-weight:600;color:var(--white)}
+.infra-sub{font-size:9.5px;color:var(--slate);margin-top:2px}
+.cta-group{display:flex;gap:12px;align-items:center;opacity:0;transform:translateY(12px);transition:opacity .6s .4s,transform .6s .4s}
+.cta-group.visible{opacity:1;transform:translateY(0)}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--teal);color:white;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;padding:12px 24px;border-radius:8px;border:none;cursor:pointer;text-decoration:none;transition:background .2s,transform .15s,box-shadow .2s;box-shadow:0 0 20px #0D948840}
+.btn-primary:hover{background:var(--teal-lt);transform:translateY(-2px);box-shadow:0 4px 28px #0D948860}
+.btn-ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--slate);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;padding:12px 18px;border-radius:8px;border:1px solid #1E3461;cursor:pointer;text-decoration:none;transition:color .2s,border-color .2s}
+.btn-ghost:hover{color:var(--white);border-color:var(--teal)}
+/* agent panel */
+.agent-panel{background:#0A1628;border-left:1px solid #1E3461;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden}
+.agent-header{padding:34px 32px 18px;border-bottom:1px solid #1E3461;flex-shrink:0}
+.agent-status{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px #22C55E20;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px #22C55E20}50%{box-shadow:0 0 0 6px #22C55E10}}
+.status-text{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--green);letter-spacing:.08em;text-transform:uppercase}
+.agent-avatar{width:48px;height:48px;background:linear-gradient(135deg,var(--teal),#065A54);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:20px;color:white;margin-bottom:9px;box-shadow:0 0 24px #0D948830}
+.agent-id{font-size:15px;font-weight:600;color:var(--white)}
+.agent-role{font-size:11px;color:var(--teal);margin-top:2px}
+.waveform{display:flex;align-items:center;gap:3px;height:26px;padding:0 32px;margin:12px 0}
+.wave-bar{width:3px;border-radius:2px;background:var(--teal);height:5px;opacity:.7}
+.wave-bar.active{animation:wave .8s ease-in-out infinite}
+@keyframes wave{0%,100%{height:5px;opacity:.5}50%{height:20px;opacity:1}}
+.speech-area{flex:1;padding:0 32px 10px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.speech-current{background:var(--navy-mid);border:1px solid #1E3461;border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column}
+.speech-current::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--teal),var(--teal-lt));transform-origin:left;animation:pb 9s linear forwards}
+@keyframes pb{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.speech-text{font-size:13px;line-height:1.7;color:var(--white);overflow-y:auto;flex:1}
+.typing-cursor{display:inline-block;width:2px;height:14px;background:var(--teal);margin-left:2px;animation:blink .8s infinite;vertical-align:middle}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.transcript-history{flex-shrink:0;max-height:60px;overflow:hidden;margin-top:8px}
+.transcript-item{font-size:10px;color:#283655;padding:3px 0;border-bottom:1px solid #0d1a2e;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.transcript-item:first-child{color:#334155}
+.chapter-nav{padding:14px 32px 20px;border-top:1px solid #1E3461;flex-shrink:0}
+.chapter-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:#334155;text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+.chapter-list{display:flex;flex-direction:column;gap:2px}
+.chapter-btn{display:flex;align-items:center;gap:8px;background:none;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;text-align:left;transition:background .15s;width:100%}
+.chapter-btn:hover{background:#0F1F3D}
+.chapter-btn.active{background:#0D948815}
+.chapter-dot{width:6px;height:6px;border-radius:50%;background:#1E3461;flex-shrink:0;transition:background .2s}
+.chapter-btn.active .chapter-dot{background:var(--teal);box-shadow:0 0 0 3px #0D948830}
+.chapter-name{font-size:11.5px;color:#475569;transition:color .2s}
+.chapter-btn.active .chapter-name{color:var(--teal)}
+.playback-controls{display:flex;align-items:center;gap:9px;padding:12px 32px;border-top:1px solid #0F1F3D;flex-shrink:0}
+.ctrl-btn{background:none;border:none;color:var(--slate);cursor:pointer;padding:5px;border-radius:6px;transition:color .2s,background .2s;font-size:18px}
+.ctrl-btn:hover{color:var(--white);background:#1E3461}
+.ctrl-btn.primary{width:34px;height:34px;background:var(--teal);color:white;border-radius:50%;font-size:13px}
+.ctrl-btn.primary:hover{background:var(--teal-lt)}
+.ctrl-progress{flex:1;height:3px;background:#1E3461;border-radius:2px;overflow:hidden}
+.ctrl-progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-lt));width:0%;transition:width .3s}
+/* scroll sections */
+.scroll-section{position:relative;z-index:1;padding:110px 80px;max-width:1240px;margin:0 auto}
+.section-tag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal);text-transform:uppercase;letter-spacing:.12em;margin-bottom:14px}
+.section-title{font-family:'DM Serif Display',serif;font-size:clamp(28px,3.6vw,44px);margin-bottom:16px;line-height:1.15}
+.section-body{font-size:15.5px;color:var(--slate);line-height:1.8;max-width:600px;margin-bottom:52px}
+/* journeys */
+.journeys-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.journey-card{background:var(--navy-mid);border:1px solid #1E3461;border-radius:16px;overflow:hidden}
+.journey-header{padding:16px 20px 13px;border-bottom:1px solid #1E3461;display:flex;align-items:center;gap:11px}
+.journey-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.journey-title{font-size:13.5px;font-weight:600;color:var(--white)}
+.journey-channel{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.05em;margin-top:2px}
+.journey-body{padding:16px 20px;min-height:300px}
+/* chat bubbles */
+.chat-stream{display:flex;flex-direction:column;gap:9px}
+.bubble-wrap{display:flex;flex-direction:column;gap:2px}
+.bubble-wrap.patient{align-items:flex-end}
+.bubble-wrap.agent{align-items:flex-start}
+.bubble-who{font-size:9px;color:#334155;padding:0 6px;font-family:'JetBrains Mono',monospace}
+.bubble{max-width:84%;padding:9px 13px;border-radius:11px;font-size:12px;line-height:1.6;opacity:0;transform:translateY(7px);transition:opacity .4s,transform .4s}
+.bubble.visible{opacity:1;transform:translateY(0)}
+.bubble.patient-bubble{background:#1E3461;color:#CBD5E1;border-bottom-right-radius:3px}
+.bubble.agent-bubble{background:#0D948818;border:1px solid #0D948840;color:var(--white);border-bottom-left-radius:3px}
+.bubble.agent-bubble strong{color:var(--teal-lt)}
+.lang-tag{display:inline-block;font-size:8.5px;background:#0D948828;color:var(--teal-lt);padding:1px 5px;border-radius:8px;margin-left:4px;vertical-align:middle}
+.bubble-time{font-size:8.5px;color:#1E3461;padding:0 6px}
+/* voice call */
+.voice-line{display:flex;align-items:flex-start;gap:8px;font-size:11.5px;line-height:1.6;padding:3px 0;opacity:0;transform:translateX(-5px);transition:opacity .4s,transform .4s}
+.voice-line.visible{opacity:1;transform:translateX(0)}
+.v-name{font-weight:600;min-width:50px;flex-shrink:0;font-size:10px;margin-top:2px}
+.agent-line .v-name{color:var(--teal)}
+.patient-line .v-name{color:#64748B}
+.v-text{color:#CBD5E1}
+.agent-line .v-text{color:var(--white)}
+/* no-show */
+.risk-list{display:flex;flex-direction:column;gap:7px}
+.risk-row{display:flex;align-items:center;gap:9px;opacity:0;transform:translateY(4px);transition:opacity .4s,transform .4s}
+.risk-row.visible{opacity:1;transform:translateY(0)}
+.risk-name{font-size:11.5px;color:var(--white);font-weight:500;min-width:88px}
+.risk-bar-wrap{flex:1;height:5px;background:#1E3461;border-radius:3px;overflow:hidden}
+.risk-bar-fill{height:100%;border-radius:3px;transition:width .8s .3s}
+.risk-label{font-size:9.5px;font-weight:600;min-width:34px;text-align:right}
+.reminder-msg{background:#1E3461;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px;color:#CBD5E1;line-height:1.6;opacity:0;transition:opacity .5s .4s}
+.reminder-msg.visible{opacity:1}
+.wapp-tag{color:var(--green);font-weight:600}
+/* OCR */
+.rx-before{background:#1A1A2E;border:1px dashed #334155;border-radius:8px;padding:13px 15px;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#475569;line-height:1.8;margin-bottom:11px;opacity:0;transition:opacity .4s}
+.rx-before.visible{opacity:1}
+.rx-item{display:flex;align-items:flex-start;gap:8px;background:#0D948810;border:1px solid #0D948828;border-radius:8px;padding:9px 11px;margin-bottom:6px;opacity:0;transform:translateX(-4px);transition:opacity .4s,transform .4s}
+.rx-item.visible{opacity:1;transform:translateX(0)}
+.rx-num{font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--teal);background:#0D948822;padding:2px 6px;border-radius:8px;flex-shrink:0;margin-top:1px}
+.rx-medicine{font-size:11.5px;font-weight:600;color:var(--white)}
+.rx-instruction{font-size:10.5px;color:var(--slate);margin-top:1px}
+/* owner */
+.owner-chat{display:flex;flex-direction:column;gap:11px}
+.owner-q{background:#1E3461;border-radius:10px;padding:11px 13px;font-size:12px;color:#CBD5E1;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.owner-q.visible{opacity:1;transform:translateY(0)}
+.owner-a{background:#0D948812;border:1px solid #0D948838;border-radius:10px;padding:13px 15px;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.owner-a.visible{opacity:1;transform:translateY(0)}
+.owner-a-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--teal);letter-spacing:.06em;margin-bottom:6px}
+.owner-a-main{font-size:13px;font-weight:600;color:var(--white);margin-bottom:5px}
+.owner-a-detail{font-size:11px;color:var(--slate);line-height:1.65}
+.mini-chart{display:flex;gap:5px;margin-top:9px;align-items:flex-end;height:32px}
+.mini-bar{border-radius:3px 3px 0 0;flex:1;min-width:10px;background:var(--teal);opacity:.7}
+/* agents showcase */
+.agents-showcase{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.showcase-card{background:var(--navy-mid);border:1px solid #1E3461;border-radius:14px;padding:20px 16px;position:relative;overflow:hidden;transition:border-color .2s,transform .2s}
+.showcase-card:hover{border-color:var(--card-accent);transform:translateY(-4px)}
+.showcase-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--card-accent)}
+.showcase-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--card-accent);margin-bottom:11px;letter-spacing:.05em}
+.showcase-name{font-size:13.5px;font-weight:600;color:var(--white);margin-bottom:8px}
+.showcase-desc{font-size:11.5px;color:var(--slate);line-height:1.6}
+.showcase-channels{display:flex;flex-wrap:wrap;gap:4px;margin-top:11px}
+.channel-tag{font-size:9px;font-weight:500;color:var(--card-accent);background:color-mix(in srgb,var(--card-accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--card-accent) 22%,transparent);padding:2px 6px;border-radius:100px}
+/* scale grid */
+.scale-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.scale-card{background:var(--navy-mid);border:1px solid #1E3461;border-radius:14px;padding:26px 24px}
+.scale-card-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.scale-icon{font-size:26px}
+.scale-h{font-size:16px;font-weight:600;color:var(--white)}
+.scale-sub{font-size:11.5px;color:var(--teal);margin-top:2px}
+.scale-body{font-size:13px;color:var(--slate);line-height:1.7;margin-bottom:14px}
+.scale-features{display:flex;flex-direction:column;gap:6px}
+.scale-feat{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:#CBD5E1}
+.scale-feat::before{content:"→";color:var(--teal);font-weight:600;flex-shrink:0;margin-top:1px}
+/* infra / why */
+.infra-showcase{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.infra-showcase-card{background:var(--navy-mid);border:1px solid #1E3461;border-radius:14px;padding:24px 20px}
+.infra-big{font-size:28px;margin-bottom:9px}
+.infra-h{font-size:14.5px;font-weight:600;color:var(--white);margin-bottom:7px}
+.infra-p{font-size:12.5px;color:var(--slate);line-height:1.7}
+/* CTA */
+.cta-section{background:linear-gradient(135deg,#0F1F3D,#162240);border:1px solid #1E3461;border-radius:20px;padding:68px 52px;text-align:center;position:relative;overflow:hidden}
+.cta-section::before{content:'';position:absolute;width:400px;height:400px;background:radial-gradient(circle,#0D948818 0%,transparent 70%);top:-100px;left:50%;transform:translateX(-50%);pointer-events:none}
+.cta-title{font-family:'DM Serif Display',serif;font-size:38px;margin-bottom:16px}
+.cta-sub{font-size:15.5px;color:var(--slate);max-width:480px;margin:0 auto 30px;line-height:1.7}
+.cta-email{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);margin-top:16px}
+footer{position:relative;z-index:1;padding:34px 80px;border-top:1px solid #1E3461;display:flex;justify-content:space-between;align-items:center}
+.footer-left{font-size:12px;color:#334155}
+.footer-right{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--teal)}
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s,transform .7s}
+.reveal.revealed{opacity:1;transform:translateY(0)}
+@media(max-width:1100px){.page{grid-template-columns:1fr;grid-template-rows:auto}.agent-panel{display:none}.stage{padding:100px 36px 56px}.agents-showcase{grid-template-columns:repeat(2,1fr)}.infra-showcase,.scale-grid,.journeys-grid{grid-template-columns:1fr}footer{flex-direction:column;gap:10px;text-align:center}}
+@media(max-width:640px){.scroll-section{padding:68px 20px}.cta-section{padding:44px 20px}.agents-showcase{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- HERO -->
+<div class="page" id="hero">
+  <div class="stage">
+    <div class="logo">
+      <div class="logo-mark">V</div>
+      <div><div class="logo-name">Vedika AI Labs</div><div class="logo-domain">vedikaailabs.com</div></div>
+    </div>
+
+    <div class="scene" id="scene-0">
+      <div class="scene-label">Welcome</div>
+      <h1 class="headline">Every clinic deserves<br>an AI that speaks<br><em>its language.</em></h1>
+      <p class="subtext">AI agents for any clinic, any size — from a solo practitioner to a multi-city chain. Answering calls, booking appointments, serving patients in any Indian language. 24 hours a day.</p>
+      <div class="stats">
+        <div><div class="stat-val">24/7</div><div class="stat-lbl">Always answering</div></div>
+        <div><div class="stat-val">11+</div><div class="stat-lbl">Indian languages</div></div>
+        <div><div class="stat-val">₹2</div><div class="stat-lbl">Per conversation</div></div>
+      </div>
+      <div class="cta-group">
+        <a href="#agents" class="btn-primary">See it in action ↓</a>
+        <a href="mailto:hello@vedikaailabs.com" class="btn-ghost">Talk to us →</a>
+      </div>
+    </div>
+
+    <div class="scene" id="scene-1" style="display:none">
+      <div class="scene-label">The Problem</div>
+      <h1 class="headline">Your clinic is losing<br>patients <span class="coral">every single day.</span></h1>
+      <p class="subtext">Not because of lack of care. Because of operational gaps — missed calls after hours, overwhelmed receptionists, paper prescriptions patients lose, and no real-time view across your locations.</p>
+      <div class="stats">
+        <div><div class="stat-val">30%</div><div class="stat-lbl">Bookings missed</div></div>
+        <div><div class="stat-val">25%</div><div class="stat-lbl">No-show rate</div></div>
+        <div><div class="stat-val">3 hrs</div><div class="stat-lbl">Daily on phone</div></div>
+      </div>
+      <div class="cta-group"><a href="#agents" class="btn-primary">See the solution ↓</a></div>
+    </div>
+
+    <div class="scene" id="scene-2" style="display:none">
+      <div class="scene-label">The Agents</div>
+      <h1 class="headline">Five agents.<br><em>Every problem solved.</em></h1>
+      <p class="subtext">Each agent is purpose-built for one job. Together they cover the full patient journey — first call to final follow-up.</p>
+      <div class="agents-grid">
+        <div class="agent-card" style="--accent-color:#0D9488"><div class="agent-num">AGENT 01</div><div class="agent-name">Booking Agent</div><div class="agent-desc">Calls & WhatsApp. Any language. 24/7.</div></div>
+        <div class="agent-card" style="--accent-color:#F59E0B"><div class="agent-num">AGENT 02</div><div class="agent-name">No-Show Agent</div><div class="agent-desc">Risk scoring + personalised reminders.</div></div>
+        <div class="agent-card" style="--accent-color:#8B5CF6"><div class="agent-num">AGENT 03</div><div class="agent-name">Post-Visit Agent</div><div class="agent-desc">Prescription explained in patient's language.</div></div>
+        <div class="agent-card" style="--accent-color:#22C55E"><div class="agent-num">AGENT 04</div><div class="agent-name">Prescription Agent</div><div class="agent-desc">Reads handwritten Rx → clear patient guide.</div></div>
+        <div class="agent-card" style="--accent-color:#E8736A"><div class="agent-num">AGENT 05</div><div class="agent-name">Owner Agent</div><div class="agent-desc">Ask anything about your clinic. Instant answers.</div></div>
+        <div class="agent-card" style="--accent-color:#0D9488;border:1px dashed #1E3461"><div class="agent-num" style="color:#334155">YOUR CLINIC</div><div class="agent-name" style="color:#475569">Same everything</div><div class="agent-desc">Same phone, WhatsApp, CMS. Nothing changes.</div></div>
+      </div>
+    </div>
+
+    <div class="scene" id="scene-3" style="display:none">
+      <div class="scene-label">Zero Disruption</div>
+      <h1 class="headline">Your clinic.<br>Your numbers.<br><em>Your systems.</em></h1>
+      <p class="subtext">One location or fifty — we connect to what you already have. Same phone number, same WhatsApp, same software. Live in days, not months.</p>
+      <div class="infra-grid">
+        <div class="infra-item"><div class="infra-icon">📞</div><div class="infra-label">Same phone</div><div class="infra-sub">Forwarding in 2 min</div></div>
+        <div class="infra-item"><div class="infra-icon">💬</div><div class="infra-label">Same WhatsApp</div><div class="infra-sub">Meta Cloud API</div></div>
+        <div class="infra-item"><div class="infra-icon">🏥</div><div class="infra-label">Same CMS</div><div class="infra-sub">API or we build it</div></div>
+        <div class="infra-item"><div class="infra-icon">🇮🇳</div><div class="infra-label">11+ languages</div><div class="infra-sub">Auto-detected always</div></div>
+        <div class="infra-item"><div class="infra-icon">⚡</div><div class="infra-label">Live in 2 weeks</div><div class="infra-sub">1 clinic, 1 agent</div></div>
+        <div class="infra-item"><div class="infra-icon">📈</div><div class="infra-label">1 to 50 locations</div><div class="infra-sub">Scales with you</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENT PANEL -->
+  <div class="agent-panel">
+    <div class="agent-header">
+      <div class="agent-status"><div class="status-dot"></div><span class="status-text">Vedika AI Labs · Live</span></div>
+      <div class="agent-avatar">V</div>
+      <div class="agent-id">Hello 👋 We are</div>
+      <div class="agent-role" style="font-size:14px;font-weight:600;color:var(--white)">Vedika AI Labs</div>
+    </div>
+    <div class="waveform" id="waveform"></div>
+    <div class="speech-area" id="speech-area">
+      <div class="speech-current" id="speech-bubble">
+        <div class="speech-text" id="speech-text"><span class="typing-cursor"></span></div>
+      </div>
+      <div class="transcript-history" id="transcript-history"></div>
+    </div>
+    <div class="chapter-nav">
+      <div class="chapter-label">Jump to</div>
+      <div class="chapter-list" id="chapter-list"></div>
+    </div>
+    <div class="playback-controls">
+      <button class="ctrl-btn" id="btn-prev">‹</button>
+      <button class="ctrl-btn primary" id="btn-play">⏸</button>
+      <button class="ctrl-btn" id="btn-next">›</button>
+      <div class="ctrl-progress"><div class="ctrl-progress-fill" id="progress-fill"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ AGENT JOURNEYS ══════════════ -->
+<section class="scroll-section" id="agents">
+  <div class="section-tag reveal">The Agents — Live</div>
+  <h2 class="section-title reveal">See exactly how each agent works.</h2>
+  <p class="section-body reveal">These are real sample conversations — exactly how the agent responds when deployed in your clinic. Professional, warm, and always in the patient's own language.</p>
+
+  <div class="journeys-grid">
+
+    <!-- Agent 01A: WhatsApp Hindi booking -->
+    <div class="journey-card reveal">
+      <div class="journey-header">
+        <div class="journey-icon" style="background:#0D948820;color:#0D9488">📲</div>
+        <div><div class="journey-title">Booking Agent — WhatsApp</div><div class="journey-channel" style="color:#0D9488">AGENT 01 · HINDI · 8:47 PM (AFTER HOURS)</div></div>
+      </div>
+      <div class="journey-body">
+        <div class="chat-stream" id="j01a">
+          <div class="bubble-wrap patient"><span class="bubble-who">Priya Sharma</span><div class="bubble patient-bubble">Hi, I'd like to book an appointment please</div><span class="bubble-time">8:47 PM</span></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Hi Priya! Happy to help. What's the concern you'd like to see a doctor for? <span class="lang-tag">English detected</span></div><span class="bubble-time">8:47 PM</span></div>
+          <div class="bubble-wrap patient"><span class="bubble-who">Priya Sharma</span><div class="bubble patient-bubble">I have some dark spots on my face, been there for a while</div><span class="bubble-time">8:48 PM</span></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Got it — sounds like a skin pigmentation concern. <strong>Dr. Priya Mehta</strong> would be the right doctor for that. She's available this Saturday and Monday. Which works better for you?</div><span class="bubble-time">8:48 PM</span></div>
+          <div class="bubble-wrap patient"><span class="bubble-who">Priya Sharma</span><div class="bubble patient-bubble">Saturday please</div><span class="bubble-time">8:49 PM</span></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Here are the available slots on Saturday with Dr. Mehta:<br>• <strong>10:00 AM</strong><br>• <strong>11:30 AM</strong><br>• <strong>2:00 PM</strong><br>Which time suits you?</div><span class="bubble-time">8:49 PM</span></div>
+          <div class="bubble-wrap patient"><span class="bubble-who">Priya Sharma</span><div class="bubble patient-bubble">11:30 would be great</div><span class="bubble-time">8:50 PM</span></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Just to confirm — <strong>Dr. Priya Mehta, this Saturday at 11:30 AM</strong>, for skin pigmentation. Shall I go ahead and book this?</div><span class="bubble-time">8:50 PM</span></div>
+          <div class="bubble-wrap patient"><span class="bubble-who">Priya Sharma</span><div class="bubble patient-bubble">Yes please!</div><span class="bubble-time">8:50 PM</span></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">✅ <strong>All booked, Priya!</strong><br>📅 Saturday, 11:30 AM &nbsp; 👩‍⚕️ Dr. Priya Mehta<br>🔢 Booking ID: CL-00421<br><br>💡 <em>Quick tip: please come with a clean face — no moisturiser or makeup beforehand, so the doctor can examine your skin properly.</em><br><br>See you Saturday! 🙏</div><span class="bubble-time">8:51 PM</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent 01B: Voice Tamil -->
+    <div class="journey-card reveal">
+      <div class="journey-header">
+        <div class="journey-icon" style="background:#0D948820;color:#0D9488">📞</div>
+        <div><div class="journey-title">Booking Agent — Voice Call</div><div class="journey-channel" style="color:#0D9488">AGENT 01 · HINGLISH · 9:15 PM (AFTER HOURS)</div></div>
+      </div>
+      <div class="journey-body">
+        <div class="chat-stream" id="j01b">
+          <div class="voice-line agent-line"><span class="v-name">Agent</span><span class="v-text">Hello, welcome to City Clinic! Main aapki booking assistant hun. Kaise help kar sakti hun aapki?</span></div>
+          <div class="voice-line patient-line"><span class="v-name">Caller</span><span class="v-text">Haan, mujhe appointment chahiye — hair fall problem ke liye</span></div>
+          <div class="voice-line agent-line"><span class="v-name">Agent</span><span class="v-text">Of course. Hair fall ke liye Dr. Arjun Shah hamare specialist hain. Kal unke paas morning slots hain — 10 AM, 11 AM, aur 11:30 AM. Kaunsa time convenient rahega?</span></div>
+          <div class="voice-line patient-line"><span class="v-name">Caller</span><span class="v-text">11 AM theek rahega</span></div>
+          <div class="voice-line agent-line"><span class="v-name">Agent</span><span class="v-text">Perfect. Aapka naam aur mobile number bata sakte hain?</span></div>
+          <div class="voice-line patient-line"><span class="v-name">Caller</span><span class="v-text">Rahul Kapoor, 98765-XXXXX</span></div>
+          <div class="voice-line agent-line"><span class="v-name">Agent</span><span class="v-text">Thank you Rahul ji. Just to confirm — Dr. Arjun Shah, kal Monday ko 11 AM. Shall I go ahead?</span></div>
+          <div class="voice-line patient-line"><span class="v-name">Caller</span><span class="v-text">Haan, please confirm kar do</span></div>
+          <div class="voice-line agent-line"><span class="v-name">Agent</span><span class="v-text">Done! Your appointment is confirmed for Monday at 11 AM with Dr. Shah. Booking ID CL-00422. I'm sending a WhatsApp confirmation to your number right now. Take care, Rahul ji!</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent 02: No-Show -->
+    <div class="journey-card reveal">
+      <div class="journey-header">
+        <div class="journey-icon" style="background:#F59E0B20;color:#F59E0B">⏰</div>
+        <div><div class="journey-title">No-Show Agent — Smart Reminders</div><div class="journey-channel" style="color:#F59E0B">AGENT 02 · RISK SCORING · 9:00 AM DAY BEFORE</div></div>
+      </div>
+      <div class="journey-body">
+        <div style="font-size:9.5px;color:#334155;font-family:'JetBrains Mono',monospace;margin-bottom:8px;letter-spacing:.05em">TOMORROW'S RISK ANALYSIS</div>
+        <div class="risk-list" id="j02">
+          <div class="risk-row"><span class="risk-name">Anita Desai</span><div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:88%;background:#E8736A"></div></div><span class="risk-label" style="color:#E8736A">HIGH</span></div>
+          <div class="risk-row"><span class="risk-name">Suresh Kumar</span><div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:54%;background:#F59E0B"></div></div><span class="risk-label" style="color:#F59E0B">MED</span></div>
+          <div class="risk-row"><span class="risk-name">Kavya Nair</span><div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:18%;background:#22C55E"></div></div><span class="risk-label" style="color:#22C55E">LOW</span></div>
+          <div class="risk-row"><span class="risk-name">Rahul Verma</span><div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:67%;background:#F59E0B"></div></div><span class="risk-label" style="color:#F59E0B">MED</span></div>
+        </div>
+        <div style="font-size:9.5px;color:#334155;font-family:'JetBrains Mono',monospace;margin:12px 0 6px;letter-spacing:.05em">HIGH-RISK · PERSONALISED MESSAGE → ANITA DESAI</div>
+        <div class="reminder-msg" id="rm-anita"><span class="wapp-tag">WhatsApp sent ✓</span><br><br>"Hi Anita, this is a reminder that your appointment with Dr. Mehta is tomorrow at 10:30 AM. We noticed you weren't able to make it the last couple of times — we completely understand things come up. If tomorrow doesn't work, just reply here and we'll find another slot for you. Your health is important to us. 🙏"</div>
+        <div style="font-size:9.5px;color:#334155;font-family:'JetBrains Mono',monospace;margin:10px 0 6px;letter-spacing:.05em">LOW-RISK · BRIEF MESSAGE → KAVYA NAIR</div>
+        <div class="reminder-msg" id="rm-kavya"><span class="wapp-tag">WhatsApp sent ✓</span><br><br>"Hi Kavya! Quick reminder — you're booked with Dr. Mehta tomorrow at 2:00 PM. See you then! 🙏"</div>
+      </div>
+    </div>
+
+    <!-- Agent 03: Post-Visit Marathi -->
+    <div class="journey-card reveal">
+      <div class="journey-header">
+        <div class="journey-icon" style="background:#8B5CF620;color:#8B5CF6">💊</div>
+        <div><div class="journey-title">Post-Visit Companion</div><div class="journey-channel" style="color:#8B5CF6">AGENT 03 · HINGLISH · 30 MIN AFTER VISIT</div></div>
+      </div>
+      <div class="journey-body">
+        <div class="chat-stream" id="j03">
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Hi Rohan! Hope your visit with Dr. Sharma went well today. I wanted to share a quick summary of your prescription so you have everything clearly in one place. 🙏<span class="lang-tag">English detected</span></div></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble"><strong>Your medicines from today's visit:</strong><br><br>1️⃣ <strong>Azithromycin 500mg</strong> — once daily, every morning after food, for 5 days<br>2️⃣ <strong>Cetirizine 10mg</strong> — once at night before bed, as long as the itching continues<br>3️⃣ <strong>Moisturizer</strong> — apply morning and night<br><br>☀️ <em>Please use sunscreen when stepping out — it's important for your skin to heal properly.</em></div></div>
+          <div class="bubble-wrap patient"><span class="bubble-who">Rohan</span><div class="bubble patient-bubble">Does Cetirizine cause drowsiness? Mujhe driving karni hai</div></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Yes, it can make some people a little drowsy — that's actually why Dr. Sharma has prescribed it at night rather than during the day. If you ever feel it's affecting you during the day, do let the clinic know and they can adjust. 🙏</div></div>
+          <div class="bubble-wrap patient"><span class="bubble-who">Rohan</span><div class="bubble patient-bubble">When is my follow-up?</div></div>
+          <div class="bubble-wrap agent"><span class="bubble-who">Wiz Agent</span><div class="bubble agent-bubble">Dr. Sharma has recommended a follow-up in 2 weeks. <strong>Want me to book it for you right now?</strong> I can check what's available. 📅</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent 04: OCR -->
+    <div class="journey-card reveal">
+      <div class="journey-header">
+        <div class="journey-icon" style="background:#22C55E20;color:#22C55E">📄</div>
+        <div><div class="journey-title">Prescription Agent — OCR</div><div class="journey-channel" style="color:#22C55E">AGENT 04 · HANDWRITTEN Rx → PLAIN ENGLISH PATIENT GUIDE</div></div>
+      </div>
+      <div class="journey-body">
+        <div style="font-size:9.5px;color:#334155;font-family:'JetBrains Mono',monospace;margin-bottom:7px;letter-spacing:.05em">ORIGINAL (HANDWRITTEN)</div>
+        <div class="rx-before" id="rx-before">Rx — Ms S. R., F/42<br>1. Tab Doxycycline 100mg BD × 4/52<br>2. Cap Vit D3 60k IU OW × 8/52<br>3. Gel Clindamycin 1% HS thin layer<br>4. SPF 50 PA+++ sunscreen OD AM<br>F/U 4 wks</div>
+        <div style="font-size:9.5px;color:#334155;font-family:'JetBrains Mono',monospace;margin-bottom:7px;letter-spacing:.05em">PATIENT GUIDE → SUNITA JI (HINDI)</div>
+        <div id="rx-after">
+          <div class="rx-item"><span class="rx-num">1</span><div><div class="rx-medicine">Doxycycline 100mg</div><div class="rx-instruction">Take twice a day — morning and night, with food. Continue for 4 weeks.</div></div></div>
+          <div class="rx-item"><span class="rx-num">2</span><div><div class="rx-medicine">Vitamin D3 60,000 IU</div><div class="rx-instruction">Take once a week, for 8 weeks. Best taken with milk or after a meal.</div></div></div>
+          <div class="rx-item"><span class="rx-num">3</span><div><div class="rx-medicine">Clindamycin Gel 1%</div><div class="rx-instruction">Apply a thin layer on your face at night before sleeping.</div></div></div>
+          <div class="rx-item"><span class="rx-num">4</span><div><div class="rx-medicine">Sunscreen SPF 50</div><div class="rx-instruction">Apply every morning before stepping out. Essential while on this medication.</div></div></div>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:#22C55E;font-family:'JetBrains Mono',monospace">✓ WhatsApp delivered &nbsp;·&nbsp; Follow-up booked: 4 weeks</div>
+      </div>
+    </div>
+
+    <!-- Agent 05: Owner -->
+    <div class="journey-card reveal">
+      <div class="journey-header">
+        <div class="journey-icon" style="background:#E8736A20;color:#E8736A">📊</div>
+        <div><div class="journey-title">Owner Agent — Clinic Intelligence</div><div class="journey-channel" style="color:#E8736A">AGENT 05 · HINDI + ENGLISH · LIVE DATA</div></div>
+      </div>
+      <div class="journey-body">
+        <div class="owner-chat" id="j05">
+          <div class="owner-q">💬 &nbsp;"Aaj kitne bookings hue?"</div>
+          <div class="owner-a">
+            <div class="owner-a-label">WIZ AGENT · LIVE</div>
+            <div class="owner-a-main">34 appointments today</div>
+            <div class="owner-a-detail">28 attended · 4 no-shows · 2 cancelled<br>Peak hour: 11 AM–12 PM (9 patients)</div>
+            <div class="mini-chart">
+              <div class="mini-bar" style="height:38%"></div><div class="mini-bar" style="height:62%"></div>
+              <div class="mini-bar" style="height:100%;background:var(--teal-lt)"></div><div class="mini-bar" style="height:78%"></div>
+              <div class="mini-bar" style="height:52%"></div><div class="mini-bar" style="height:34%"></div><div class="mini-bar" style="height:18%"></div>
+            </div>
+          </div>
+          <div class="owner-q">💬 &nbsp;"Is month sabse zyada kaun si medicine prescribe hui?"</div>
+          <div class="owner-a">
+            <div class="owner-a-label">WIZ AGENT · PRESCRIPTION DATA</div>
+            <div class="owner-a-main">Top: Doxycycline 100mg</div>
+            <div class="owner-a-detail">1. Doxycycline 100mg — 142 &nbsp; 2. Clindamycin Gel — 118<br>3. Cetirizine 10mg — 97 &nbsp; 4. Sunscreen SPF 50 — 89</div>
+          </div>
+          <div class="owner-q">💬 &nbsp;"Which location had the most no-shows this week?"</div>
+          <div class="owner-a">
+            <div class="owner-a-label">WIZ AGENT · CHAIN VIEW</div>
+            <div class="owner-a-main">Andheri West — 12 no-shows (18%)</div>
+            <div class="owner-a-detail">Bandra: 6 (9%) · Thane: 4 (7%) · Pune: 3 (6%)<br>💡 Andheri is 2× chain average — recommend activating high-risk reminders.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- agent summary strip -->
+<section class="scroll-section" style="padding-top:0">
+  <div class="section-tag reveal">The Full Suite</div>
+  <h2 class="section-title reveal">Five agents. Complete coverage.</h2>
+  <p class="section-body reveal">Each agent is purpose-built for one job — and together they cover the entire patient journey, from the first call to the final follow-up, with no disruption to how your clinic operates today.</p>
+  <div class="agents-showcase reveal">
+    <div class="showcase-card" style="--card-accent:#0D9488"><div class="showcase-num">AGENT 01</div><div class="showcase-name">AI Booking Agent</div><div class="showcase-desc">Answers every call and WhatsApp. Detects language. Checks live slots. Confirms bookings. Sends pre-visit instructions.</div><div class="showcase-channels"><span class="channel-tag">Voice</span><span class="channel-tag">WhatsApp</span><span class="channel-tag">24/7</span></div></div>
+    <div class="showcase-card" style="--card-accent:#F59E0B"><div class="showcase-num">AGENT 02</div><div class="showcase-name">No-Show Agent</div><div class="showcase-desc">Scores no-show risk per patient. Sends personalised reminders — warm for high-risk, brief for reliable patients.</div><div class="showcase-channels"><span class="channel-tag">WhatsApp</span><span class="channel-tag">Risk scoring</span></div></div>
+    <div class="showcase-card" style="--card-accent:#8B5CF6"><div class="showcase-num">AGENT 03</div><div class="showcase-name">Post-Visit Agent</div><div class="showcase-desc">Prescription summary in the patient's language within 30 minutes. Available 24/7 for follow-up questions.</div><div class="showcase-channels"><span class="channel-tag">WhatsApp</span><span class="channel-tag">Follow-up</span></div></div>
+    <div class="showcase-card" style="--card-accent:#22C55E"><div class="showcase-num">AGENT 04</div><div class="showcase-name">Prescription Agent</div><div class="showcase-desc">Reads handwritten prescriptions via AI vision. Generates clear patient guides in any of 11+ Indian languages.</div><div class="showcase-channels"><span class="channel-tag">OCR</span><span class="channel-tag">WhatsApp</span></div></div>
+    <div class="showcase-card" style="--card-accent:#E8736A"><div class="showcase-num">AGENT 05</div><div class="showcase-name">Owner Agent</div><div class="showcase-desc">Ask your clinic anything — in any language. Instant answers from live data across one clinic or all locations.</div><div class="showcase-channels"><span class="channel-tag">WhatsApp</span><span class="channel-tag">Chain view</span></div></div>
+  </div>
+</section>
+
+<!-- ══════════════ SINGLE vs CHAIN ══════════════ -->
+<section class="scroll-section" style="padding-top:0" id="scale">
+  <div class="section-tag reveal">Works at Any Scale</div>
+  <h2 class="section-title reveal">One clinic or a hundred locations.<br><em>Same agents. Same results.</em></h2>
+  <p class="section-body reveal">Whether you're a solo practitioner who wants to stop missing calls, or a chain owner who needs visibility across every location — Vedika AI Labs scales with you from day one.</p>
+  <div class="scale-grid reveal">
+    <div class="scale-card">
+      <div class="scale-card-top"><div class="scale-icon">🏥</div><div><div class="scale-h">Single Clinic</div><div class="scale-sub">Solo practitioners & independent clinics</div></div></div>
+      <div class="scale-body">One doctor. One location. You're the receptionist, manager, and owner all at once. We give you a 24/7 AI front desk that costs less than one hour of staff time per day.</div>
+      <div class="scale-features">
+        <div class="scale-feat">Booking agent live in 2 weeks — your same phone and WhatsApp</div>
+        <div class="scale-feat">Every missed call becomes a confirmed appointment</div>
+        <div class="scale-feat">Patients get prescription guides in their language, automatically</div>
+        <div class="scale-feat">Ask "aaj kitne patients aaye?" — instant answer on WhatsApp</div>
+        <div class="scale-feat">No IT team. No big upfront investment. No disruption.</div>
+      </div>
+    </div>
+    <div class="scale-card">
+      <div class="scale-card-top"><div class="scale-icon">🏢</div><div><div class="scale-h">Clinic Chain</div><div class="scale-sub">Multi-location groups & franchise networks</div></div></div>
+      <div class="scale-body">Multiple locations. Different cities. Different languages. You need consistent patient experience everywhere and a single view of how every location is performing — right now.</div>
+      <div class="scale-features">
+        <div class="scale-feat">Same agent deployed across all locations — one setup, all branches</div>
+        <div class="scale-feat">Chain-wide analytics: compare no-shows, bookings, footfall per location</div>
+        <div class="scale-feat">Each location speaks the local language — Tamil in Chennai, Bengali in Kolkata</div>
+        <div class="scale-feat">Owner asks across the chain: "Which branch had most cancellations?"</div>
+        <div class="scale-feat">Start at one location, prove it, roll out chain-wide</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ WHY VEDIKA ══════════════ -->
+<section class="scroll-section" style="padding-top:0">
+  <div class="section-tag reveal">Why Vedika AI Labs</div>
+  <h2 class="section-title reveal">Not a generic chatbot.<br><em>An extension of your clinic.</em></h2>
+  <p class="section-body reveal">Every other clinic AI speaks English first and adds Indic languages as an afterthought. We built the other way around — powered by Sarvam AI, supporting 11+ Indian languages natively, not as translations.</p>
+  <div class="infra-showcase reveal">
+    <div class="infra-showcase-card"><div class="infra-big">🌿</div><div class="infra-h">We're inside real clinics</div><div class="infra-p">We are deployed inside real clinics — testing with actual patients, real booking systems, and live doctors across multiple specialities. No competitor can buy this kind of ground truth.</div></div>
+    <div class="infra-showcase-card"><div class="infra-big">🇮🇳</div><div class="infra-h">India-first, always</div><div class="infra-p">Built on Sarvam AI's Indic language models — supporting 11+ languages including Hindi, Bengali, Tamil, Telugu, Kannada, Malayalam, Marathi, Gujarati, and more. Patients feel heard in their mother tongue.</div></div>
+    <div class="infra-showcase-card"><div class="infra-big">🤝</div><div class="infra-h">We build with you</div><div class="infra-p">Start with one clinic. One booking agent. Six weeks. No long contract. No big investment. Prove it works, then expand — one clinic or your entire chain.</div></div>
+  </div>
+</section>
+
+<!-- ══════════════ CTA ══════════════ -->
+<section class="scroll-section" style="padding-top:0">
+  <div class="cta-section reveal">
+    <h2 class="cta-title">Let's build this together.</h2>
+    <p class="cta-sub">One clinic or a hundred locations — start with one agent, six weeks, and see the difference yourself.</p>
+    <a href="mailto:hello@vedikaailabs.com" class="btn-primary" style="font-size:15px;padding:14px 30px;margin:0 auto;display:inline-flex">Book a conversation →</a>
+    <div class="cta-email">hello@vedikaailabs.com</div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-left">© 2026 Vedika AI Labs · vedikaailabs.com</div>
+  <div class="footer-right">AI Agents for Clinics · India-First · 11+ Languages</div>
+</footer>
+
+<script>
+// ── Cursor ──────────────────────────────────────────────────────────────────
+const CUR=document.getElementById('cursor'),CURR=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
+(function ac(){rx+=(mx-rx)*.15;ry+=(my-ry)*.15;CUR.style.left=mx+'px';CUR.style.top=my+'px';CURR.style.left=rx+'px';CURR.style.top=ry+'px';requestAnimationFrame(ac)})();
+document.querySelectorAll('a,button').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{CUR.style.transform='translate(-50%,-50%) scale(2)';CURR.style.opacity='.2'});
+  el.addEventListener('mouseleave',()=>{CUR.style.transform='translate(-50%,-50%) scale(1)';CURR.style.opacity='.5'});
+});
+
+// ── Canvas ──────────────────────────────────────────────────────────────────
+const cv=document.getElementById('bg-canvas'),ctx=cv.getContext('2d');
+let pts=[];
+function rc(){cv.width=innerWidth;cv.height=innerHeight}rc();
+addEventListener('resize',rc);
+for(let i=0;i<60;i++)pts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.5+.5,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,a:Math.random()*.5+.1});
+(function dc(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  pts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(p.x<0)p.x=cv.width;if(p.x>cv.width)p.x=0;if(p.y<0)p.y=cv.height;if(p.y>cv.height)p.y=0;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(13,148,136,${p.a})`;ctx.fill()});
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(13,148,136,${.08*(1-d/120)})`;ctx.lineWidth=.5;ctx.stroke()}}
+  requestAnimationFrame(dc)
+})();
+
+// ── Waveform ────────────────────────────────────────────────────────────────
+const wf=document.getElementById('waveform');
+for(let i=0;i<28;i++){const b=document.createElement('div');b.className='wave-bar';b.style.animationDelay=(i*.06)+'s';wf.appendChild(b)}
+function sw(on){document.querySelectorAll('.wave-bar').forEach(b=>b.classList.toggle('active',on))}
+
+// ── Chapters ────────────────────────────────────────────────────────────────
+const chapters=[
+  {name:"Welcome",speech:"Hi! We are Vedika AI Labs — we work with clinics across India to help them get more out of AI. Whether you have one clinic or twenty locations, the problem is usually the same: too many calls going unanswered, too much staff time on routine tasks, and patients not getting the follow-up they deserve. That's exactly what we fix.",scene:"scene-0"},
+  {name:"The reality",speech:"We talk to clinic owners every week, and the frustration is real — patients calling after 7 PM and getting no answer, receptionists spending half their day on hold, prescriptions scribbled on paper that patients can't read and end up ignoring. It's not a people problem. It's a systems problem. And systems can be fixed.",scene:"scene-1"},
+  {name:"What we built",speech:"So we built five AI agents — each one doing a single job really well. The booking agent answers calls and WhatsApp messages in the patient's language, day or night. The no-show agent figures out who's likely to miss tomorrow and sends them a personal message. The post-visit agent explains the prescription to the patient in their own words. And the owner agent? You just ask it a question — like 'how many bookings did we get today' — and it tells you, instantly, no dashboard needed.",scene:"scene-2"},
+  {name:"Zero disruption",speech:"Here's the thing we always tell clinic owners — nothing in your clinic needs to change. Patients still call the same number. Your staff still use the same software. Your WhatsApp stays the same. We just quietly connect to what you already have, and suddenly every call is answered, every patient gets followed up, and you have visibility you never had before.",scene:"scene-3"},
+  {name:"Let's start small",speech:"Our suggestion is always the same: start with one clinic, just the booking agent, and give it six weeks. You'll see the difference in the first week. After that, we figure out together what to add next — more agents, more locations, whatever makes sense. There's no big upfront commitment. Just results.",scene:"scene-0"},
+];
+
+let cur=0,playing=true,ti=null;const DUR=9000;
+const cl=document.getElementById('chapter-list');
+chapters.forEach((c,i)=>{const b=document.createElement('button');b.className='chapter-btn'+(i===0?' active':'');b.innerHTML=`<div class="chapter-dot"></div><span class="chapter-name">${c.name}</span>`;b.onclick=()=>goTo(i);cl.appendChild(b)});
+
+function type(txt,cb){
+  const el=document.getElementById('speech-text');let i=0;
+  el.innerHTML='<span class="typing-cursor"></span>';
+  if(ti)clearInterval(ti);
+  ti=setInterval(()=>{if(i>=txt.length){clearInterval(ti);if(cb)cb();return}el.textContent=txt.slice(0,i+1);const c=document.createElement('span');c.className='typing-cursor';el.appendChild(c);i++;},20);
+}
+
+function prog(dur,done){
+  const f=document.getElementById('progress-fill');f.style.width='0%';
+  let s=null;
+  (function step(ts){if(!s)s=ts;const p=Math.min(100,(ts-s)/dur*100);f.style.width=p+'%';if(p<100&&playing)requestAnimationFrame(step);else if(p>=100&&done)done();})(performance.now());
+}
+
+function showScene(id){
+  document.querySelectorAll('.scene').forEach(s=>{s.style.display='none';s.querySelectorAll('.scene-label,.headline,.subtext,.stats,.cta-group,.agents-grid,.infra-grid').forEach(e=>e.classList.remove('visible'))});
+  const sc=document.getElementById(id);if(!sc)return;sc.style.display='block';
+  requestAnimationFrame(()=>sc.querySelectorAll('.scene-label,.headline,.subtext,.stats,.cta-group,.agents-grid,.infra-grid').forEach((e,i)=>setTimeout(()=>e.classList.add('visible'),i*80)));
+}
+
+function goTo(idx){
+  if(ti)clearInterval(ti);
+  const ph=document.getElementById('transcript-history');
+  const d=document.createElement('div');d.className='transcript-item';const t=chapters[cur].speech;d.textContent=t.length>72?t.slice(0,69)+'…':t;ph.insertBefore(d,ph.firstChild);
+  while(ph.children.length>3)ph.removeChild(ph.lastChild);
+  cur=idx;
+  document.querySelectorAll('.chapter-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  showScene(chapters[idx].scene);sw(true);
+  const bb=document.getElementById('speech-bubble');bb.classList.remove('speech-current');void bb.offsetWidth;bb.classList.add('speech-current');
+  type(chapters[idx].speech,()=>sw(false));
+  if(playing)prog(DUR,()=>goTo((cur+1)%chapters.length));
+}
+
+document.getElementById('btn-play').onclick=()=>{playing=!playing;document.getElementById('btn-play').textContent=playing?'⏸':'▶';if(playing)goTo(cur);else sw(false)};
+document.getElementById('btn-next').onclick=()=>goTo((cur+1)%chapters.length);
+document.getElementById('btn-prev').onclick=()=>goTo((cur-1+chapters.length)%chapters.length);
+showScene('scene-0');goTo(0);
+
+// ── Scroll reveal ────────────────────────────────────────────────────────────
+const ro=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('revealed');ro.unobserve(e.target)}})},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+
+// ── Journey animations ───────────────────────────────────────────────────────
+function animItems(id,sel,base){
+  const c=document.getElementById(id);if(!c)return;
+  c.querySelectorAll(sel).forEach((el,i)=>setTimeout(()=>el.classList.add('visible'),base+i*380));
+}
+
+const jo=new IntersectionObserver(es=>{
+  es.forEach(e=>{
+    if(!e.isIntersecting)return;
+    const card=e.target;
+    jo.unobserve(card);
+    // detect which card by presence of ids
+    if(card.querySelector('#j01a')) animItems('j01a','.bubble',200);
+    if(card.querySelector('#j01b')) animItems('j01b','.voice-line',200);
+    if(card.querySelector('#j02')){
+      animItems('j02','.risk-row',200);
+      setTimeout(()=>{
+        const a=document.getElementById('rm-anita');const k=document.getElementById('rm-kavya');
+        if(a)a.classList.add('visible');setTimeout(()=>{if(k)k.classList.add('visible')},700);
+      },1800);
+    }
+    if(card.querySelector('#j03')) animItems('j03','.bubble',200);
+    if(card.querySelector('#rx-before')){
+      setTimeout(()=>document.getElementById('rx-before').classList.add('visible'),300);
+      document.querySelectorAll('.rx-item').forEach((el,i)=>setTimeout(()=>el.classList.add('visible'),700+i*350));
+    }
+    if(card.querySelector('#j05')) animItems('j05','.owner-q, .owner-a',200);
+  });
+},{threshold:.18});
+
+document.querySelectorAll('.journey-card').forEach(c=>jo.observe(c));
+</script>
+</body>
+</html>
